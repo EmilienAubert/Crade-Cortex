@@ -1,0 +1,22 @@
+# Copier dans /etc/systemd/system/ puis :
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now pipedal-bridge
+#
+# Adapter User et les chemins. Si websockets est installe dans un venv,
+# ExecStart doit pointer sur le python de ce venv.
+
+[Unit]
+Description=Pont PiPedal vers pedalier Pico
+After=pipedald.service
+Wants=pipedald.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/crade-cortex
+ExecStart=/usr/bin/python3 /opt/crade-cortex/pipedal_bridge.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

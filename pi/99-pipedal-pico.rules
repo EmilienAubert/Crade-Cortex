@@ -1,0 +1,10 @@
+# Copier dans /etc/udev/rules.d/ puis :
+#   sudo udevadm control --reload && sudo udevadm trigger
+#
+# Sans cette regle, le numero de ttyACM change selon l'ordre de branchement.
+# L'interface 02 est le port CDC data ; la console porte un autre numero.
+# ATTRS{product} correspond au nom pose par supervisor.set_usb_identification
+# dans boot.py.
+
+SUBSYSTEM=="tty", ATTRS{idVendor}=="239a", ATTRS{product}=="Pedalier", \
+  ENV{ID_USB_INTERFACE_NUM}=="02", SYMLINK+="pipedal-pico"

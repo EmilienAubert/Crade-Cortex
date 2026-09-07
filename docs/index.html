@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crade Cortex — architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --enclos:#0F181C; --panel:#16242A; --rule:#263B43;
+  --ink:#CFDBDE; --ink-dim:#8AA3AB;
+  --led:#F5A623; --led-soft:rgba(245,166,35,.13); --alert:#E0604D;
+  --sans:"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --cond:"IBM Plex Sans Condensed","IBM Plex Sans","Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--enclos);color:var(--ink);font-family:var(--sans);
+  font-size:16.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--led);text-decoration:none;border-bottom:1px solid rgba(245,166,35,.3)}
+a:hover{border-bottom-color:var(--led)}
+:focus-visible{outline:2px solid var(--led);outline-offset:3px}
+
+.shell{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto}
+@media(min-width:1000px){.shell{grid-template-columns:240px minmax(0,1fr);gap:56px;padding:0 40px}}
+
+nav{display:none}
+@media(min-width:1000px){nav{display:block;position:sticky;top:0;align-self:start;
+  height:100vh;overflow-y:auto;padding:56px 0 40px}}
+.nav-title{font-family:var(--cond);font-weight:700;font-size:15px;margin:0 0 4px}
+.nav-sub{font-size:12.5px;color:var(--ink-dim);margin:0 0 26px;font-family:var(--mono)}
+nav ol{list-style:none;margin:0;padding:0;counter-reset:s}
+nav li{counter-increment:s}
+nav a{display:block;padding:5px 0 5px 28px;position:relative;font-size:13.5px;
+  color:var(--ink-dim);border:0;line-height:1.4}
+nav a::before{content:counter(s);position:absolute;left:0;top:5px;
+  font-family:var(--mono);font-size:11px;color:var(--rule)}
+nav a:hover{color:var(--ink)}
+nav a.on,nav a.on::before{color:var(--led)}
+
+main{padding:44px 22px 120px;min-width:0}
+@media(min-width:1000px){main{padding:56px 0 160px}}
+
+.hero{margin-bottom:60px}
+h1{font-family:var(--cond);font-weight:700;font-size:clamp(34px,7vw,58px);
+  line-height:1.02;margin:0 0 14px;letter-spacing:-.015em}
+.lede{font-size:clamp(17px,2.2vw,20px);line-height:1.55;color:var(--ink-dim);
+  max-width:60ch;margin:0}
+.stamp{font-family:var(--mono);font-size:12px;color:var(--rule);
+  margin-top:28px;padding-top:14px;border-top:1px solid var(--rule)}
+
+figure{margin:40px 0 0}
+.diagram{background:var(--panel);border:1px solid var(--rule);padding:20px 14px;overflow:hidden}
+.diagram svg{display:block;width:100%;height:auto}
+figcaption{font-size:13.5px;color:var(--ink-dim);margin-top:12px;max-width:62ch}
+
+h2{font-family:var(--cond);font-weight:700;font-size:clamp(24px,3.4vw,32px);
+  line-height:1.15;margin:76px 0 6px;letter-spacing:-.01em;
+  padding-top:22px;border-top:2px solid var(--rule)}
+h2 .num{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--led);
+  display:block;margin-bottom:8px;letter-spacing:0}
+h3{font-family:var(--cond);font-weight:600;font-size:19px;margin:38px 0 8px;color:#EAF1F2}
+p{max-width:68ch;margin:0 0 16px}
+ul,ol{max-width:66ch;padding-left:22px;margin:0 0 16px}
+li{margin-bottom:6px}
+strong{color:#F1F6F7;font-weight:600}
+
+code{font-family:var(--mono);font-size:.86em;background:var(--panel);
+  padding:1px 5px;color:#E7C58A;border:1px solid var(--rule)}
+pre{background:var(--panel);border:1px solid var(--rule);border-left:3px solid var(--led);
+  padding:16px 18px;overflow-x:auto;margin:0 0 20px;font-size:13.5px;line-height:1.6}
+pre code{background:none;border:0;padding:0;color:#C9DCE0;font-size:inherit}
+.c{color:#5F7C85}.k{color:var(--led)}.s{color:#8FD4B0}
+
+.lcd{background:#0B1215;border:1px solid var(--rule);border-left:3px solid #4E6870;
+  padding:14px 18px;margin:0 0 20px;font-family:var(--mono);font-size:14px;
+  line-height:1.45;color:#9FE0B4;white-space:pre;overflow-x:auto}
+
+table{width:100%;max-width:66ch;border-collapse:collapse;margin:0 0 22px;font-size:14.5px}
+th{text-align:left;font-family:var(--cond);font-weight:600;font-size:14px;
+  color:var(--ink-dim);padding:0 14px 8px 0;border-bottom:1px solid var(--rule)}
+td{padding:9px 14px 9px 0;border-bottom:1px solid rgba(38,59,67,.5);vertical-align:top}
+td:first-child{color:#EAF1F2}
+table code{font-size:13px}
+
+.note{border-left:3px solid var(--rule);padding:2px 0 2px 18px;margin:0 0 22px;
+  max-width:66ch;color:var(--ink-dim);font-size:15px}
+.note strong{color:var(--ink)}
+.warn{border-left:3px solid var(--alert);padding:2px 0 2px 18px;margin:0 0 22px;
+  max-width:66ch;font-size:15px}
+.warn strong{color:var(--alert);font-weight:600}
+.key{border-left:3px solid var(--led);background:var(--led-soft);
+  padding:16px 20px;margin:0 0 26px;max-width:66ch}
+.key p{margin:0;font-size:16px}
+
+.steps{list-style:none;padding:0;counter-reset:n;max-width:66ch}
+.steps li{counter-increment:n;position:relative;padding-left:38px;margin-bottom:14px}
+.steps li::before{content:counter(n);position:absolute;left:0;top:1px;
+  font-family:var(--mono);font-size:12px;color:var(--led);border:1px solid var(--rule);
+  width:24px;height:24px;display:grid;place-items:center}
+
+.todo{list-style:none;padding:0;max-width:66ch}
+.todo li{padding-left:26px;position:relative;margin-bottom:9px}
+.todo li::before{content:"";position:absolute;left:0;top:9px;width:9px;height:9px;
+  border:1px solid var(--ink-dim)}
+
+footer{margin-top:90px;padding-top:20px;border-top:1px solid var(--rule);
+  font-family:var(--mono);font-size:12px;color:var(--rule);line-height:1.9}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<nav aria-label="Contents">
+  <p class="nav-title">Crade Cortex</p>
+  <p class="nav-sub">PiPedal 2.0.110</p>
+  <ol>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#hardware">Hardware</a></li>
+    <li><a href="#switches">Switches</a></li>
+    <li><a href="#pico">The Pico</a></li>
+    <li><a href="#display">Display</a></li>
+    <li><a href="#serial">Serial protocol</a></li>
+    <li><a href="#resync">Resynchronisation</a></li>
+    <li><a href="#pi">The Pi</a></li>
+    <li><a href="#ws">Websocket protocol</a></li>
+    <li><a href="#pitfalls">Known pitfalls</a></li>
+    <li><a href="#bringup">Bring-up</a></li>
+    <li><a href="#todo">To do</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<header class="hero">
+  <h1>Crade Cortex</h1>
+  <p class="lede">A Pico sends MIDI, a Raspberry Pi sends its state back over the same cable. The LEDs don't show what your foot asked for — they show what the Pi confirmed.</p>
+  <p class="stamp">Pico RP2040 · CircuitPython · LCD1602 — Raspberry Pi · PiPedal 2.0.110<br>
+  <a href="index.fr.html">Français</a> &nbsp;·&nbsp; <a href="PROTOCOL.md">Websocket protocol</a> &nbsp;·&nbsp; <a href="WIRING.md">Wiring</a> &nbsp;·&nbsp; <a href="../README.md">Repository</a></p>
+</header>
+
+<figure>
+  <div class="diagram">
+    <svg viewBox="0 0 920 320" role="img" aria-label="The Pico sends MIDI straight to PiPedal; state comes back through the daemon over a bidirectional serial link.">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#F5A623"/></marker>
+        <marker id="ag" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#8AA3AB"/></marker>
+        <marker id="ad" markerWidth="9" markerHeight="9" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#5F7C85"/></marker>
+      </defs>
+
+      <path d="M140 150 L140 62 Q140 46 156 46 L764 46 Q780 46 780 62 L780 142"
+            fill="none" stroke="#8AA3AB" stroke-width="1.6" marker-end="url(#ag)"/>
+      <text x="460" y="34" text-anchor="middle" fill="#8AA3AB"
+            font-family="IBM Plex Mono, monospace" font-size="14">MIDI CC 102–113</text>
+      <text x="460" y="72" text-anchor="middle" fill="#4E6870"
+            font-family="IBM Plex Sans, sans-serif" font-size="12.5">does not go through the daemon</text>
+
+      <rect x="40" y="150" width="200" height="86" fill="#16242A" stroke="#263B43"/>
+      <text x="140" y="182" text-anchor="middle" fill="#EAF1F2"
+            font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="19">Pedal</text>
+      <text x="140" y="204" text-anchor="middle" fill="#7A939B"
+            font-family="IBM Plex Mono, monospace" font-size="12.5">Pico · LCD1602</text>
+
+      <rect x="360" y="150" width="200" height="86" fill="#16242A" stroke="#263B43"/>
+      <text x="460" y="182" text-anchor="middle" fill="#EAF1F2"
+            font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="19">Daemon</text>
+      <text x="460" y="204" text-anchor="middle" fill="#7A939B"
+            font-family="IBM Plex Mono, monospace" font-size="12.5">pipedal_bridge.py</text>
+
+      <rect x="680" y="150" width="200" height="86" fill="#16242A" stroke="#263B43"/>
+      <text x="780" y="182" text-anchor="middle" fill="#EAF1F2"
+            font-family="IBM Plex Sans Condensed, sans-serif" font-weight="600" font-size="19">PiPedal</text>
+      <text x="780" y="204" text-anchor="middle" fill="#7A939B"
+            font-family="IBM Plex Mono, monospace" font-size="12.5">pipedald</text>
+
+      <line x1="676" y1="193" x2="568" y2="193" stroke="#F5A623" stroke-width="2" marker-end="url(#ar)"/>
+      <text x="622" y="276" text-anchor="middle" fill="#F5A623"
+            font-family="IBM Plex Mono, monospace" font-size="13">websocket</text>
+      <line x1="622" y1="252" x2="622" y2="206" stroke="#263B43" stroke-width="1"/>
+
+      <line x1="356" y1="186" x2="248" y2="186" stroke="#F5A623" stroke-width="2" marker-end="url(#ar)"/>
+      <line x1="244" y1="206" x2="352" y2="206" stroke="#5F7C85" stroke-width="1.4" marker-end="url(#ad)"/>
+      <text x="302" y="276" text-anchor="middle" fill="#F5A623"
+            font-family="IBM Plex Mono, monospace" font-size="13">serial · S3 N: T:</text>
+      <text x="302" y="296" text-anchor="middle" fill="#5F7C85"
+            font-family="IBM Plex Mono, monospace" font-size="12">A1 A0 ?</text>
+      <line x1="302" y1="252" x2="302" y2="214" stroke="#263B43" stroke-width="1"/>
+    </svg>
+  </div>
+  <figcaption>Three streams on a single USB cable. MIDI goes up through ALSA straight to <code>pipedald</code>; state comes back through the daemon, and the Pico answers on the same serial port.</figcaption>
+</figure>
+
+<h2 id="overview"><span class="num">Section 1</span>Overview</h2>
+
+<div class="key">
+<p><strong>PiPedal is the single source of truth.</strong> The Pico holds no state of its own. It sends a CC and waits. The LED only lights on confirmation.</p>
+</div>
+
+<table>
+<tr><th>Direction</th><th>Transport</th><th>Contents</th></tr>
+<tr><td>Pico → Pi</td><td>USB MIDI (ALSA)</td><td>CC 102–105, 110–113</td></tr>
+<tr><td>Pi → Pico</td><td>USB CDC serial</td><td>state, names, tuner</td></tr>
+<tr><td>Pico → Pi</td><td>USB CDC serial</td><td>tuner mode, state request</td></tr>
+</table>
+
+<h3>Why the feedback loop exists</h3>
+<p>Without it, the Pico decides and hopes the Pi follows. That holds as long as it's the only thing acting, and it breaks in four cases: at startup, when you touch the web interface from your phone, if <code>pipedald</code> restarts on its own, and on a bank change.</p>
+<p>With the feedback, a single state exists. The whole class of desynchronisation bugs disappears by construction.</p>
+
+<h2 id="hardware"><span class="num">Section 2</span>Hardware</h2>
+
+<table>
+<tr><th>Item</th><th>Detail</th></tr>
+<tr><td>Controller</td><td>Raspberry Pi Pico (RP2040), CircuitPython</td></tr>
+<tr><td>Host</td><td>Raspberry Pi, PiPedal 2.0.110</td></tr>
+<tr><td>Audio interface</td><td>Behringer UMC404HD (<code>hw:U192k</code>), 48 kHz, 48 frames, 4 buffers</td></tr>
+<tr><td>Display</td><td>LCD1602 QAPASS, HD44780, 4-bit mode</td></tr>
+<tr><td>Switches</td><td>8 — S1–S4 snapshots, F1–F4 functions</td></tr>
+<tr><td>LEDs</td><td>8, PWM at 2 kHz, ~12 % duty cycle</td></tr>
+</table>
+
+<h3>Pinout</h3>
+<table>
+<tr><th>Pins</th><th>Function</th></tr>
+<tr><td><code>GP0</code>–<code>GP7</code></td><td>Switches S1–S4 then F1–F4</td></tr>
+<tr><td><code>GP8</code>, <code>GP9</code></td><td>LEDs 1 and 2</td></tr>
+<tr><td><code>GP10</code>–<code>GP15</code></td><td>LCD1602 — RS, E, D4–D7</td></tr>
+<tr><td><code>GP16</code>–<code>GP21</code></td><td>LEDs 3 to 8</td></tr>
+</table>
+<p>Switches use internal pull-ups and are active-low. <code>GP22</code> and <code>GP26</code>–<code>GP28</code> stay free.</p>
+
+<div class="note">
+<p><strong>Tuple ordering.</strong> <code>BROCHES_SWITCHES</code>, <code>BROCHES_LEDS</code> and <code>BRILLANCE</code> must stay aligned. <code>BRILLANCE[i]</code> applies to <code>BROCHES_LEDS[i]</code>.</p>
+</div>
+
+<h3>LCD1602 wiring</h3>
+<table>
+<tr><th>LCD pin</th><th>To</th></tr>
+<tr><td>1 VSS, 5 R/W, 16 K</td><td>GND — Pico pin 38</td></tr>
+<tr><td>2 VDD, 15 A</td><td>VBUS — pin 40, <strong>5 V</strong></td></tr>
+<tr><td>3 V0</td><td>10 kΩ potentiometer wiper</td></tr>
+<tr><td>4 RS</td><td><code>GP10</code></td></tr>
+<tr><td>6 E</td><td><code>GP11</code></td></tr>
+<tr><td>11–14 D4–D7</td><td><code>GP12</code> → <code>GP15</code></td></tr>
+</table>
+<p>Pins 7 to 10 stay unconnected: that's 4-bit mode.</p>
+
+<div class="warn">
+<p><strong>The contrast potentiometer is not optional.</strong> A floating V0 gives either a solid black display or a blank one — the number one cause of "my LCD doesn't work". Outer legs to 5 V and ground, wiper on V0.</p>
+</div>
+
+<p><strong>R/W must go to ground.</strong> That puts the LCD in write-only mode so it can never drive 5 V back into a Pico input. This is what makes the 5 V / 3.3 V mix safe here.</p>
+
+<p><strong>The backlight resistor is already on the board</strong> — R8, marked <code>101</code> for 100 Ω — on QAPASS 1602A modules. Pin 15 therefore goes straight to 5 V. Check on any other model.</p>
+
+<div class="note">
+<p>The HD44780 runs on 5 V but reads 3.3 V outputs. Officially marginal, since its high threshold is 3.5 V. In practice it works. If the display turns erratic, that's where to look.</p>
+</div>
+
+<h3>Ground</h3>
+<p>Star topology: one short common wire soldered to the Pi's ground, with each switch and LED ground arriving independently. Better fault isolation than daisy-chaining. No audio signal passes through the enclosure, so ground loops don't arise.</p>
+
+<h2 id="switches"><span class="num">Section 3</span>Switch assignment</h2>
+
+<table>
+<tr><th>Switch</th><th>CC</th><th>Role</th><th>LED</th></tr>
+<tr><td>S1–S4</td><td>102–105</td><td>Snapshots</td><td>Exclusive, on confirmation</td></tr>
+<tr><td>F1</td><td>110</td><td>Previous preset</td><td>Lit during load</td></tr>
+<tr><td>F2</td><td>111</td><td>Next preset</td><td>Lit during load</td></tr>
+<tr><td>F3</td><td>112</td><td>Tuner toggle</td><td>Lit while the mode lasts</td></tr>
+<tr><td>F4</td><td>113</td><td>Spare</td><td>120 ms flash</td></tr>
+</table>
+
+<p>Each press sends value 127, each release sends 0. The zero is essential: PiPedal bindings triggered on the rising edge don't re-arm without it.</p>
+
+<h3>Bindings to create in PiPedal</h3>
+<table>
+<tr><th>System symbol</th><th>CC</th></tr>
+<tr><td><code>snapshot1</code> … <code>snapshot4</code></td><td>102 … 105</td></tr>
+<tr><td><code>prevProgram</code></td><td>110</td></tr>
+<tr><td><code>nextProgram</code></td><td>111</td></tr>
+</table>
+
+<div class="key">
+<p>Optional but recommended: bind CC 112 to the TooB Tuner's <code>MUTE</code> control. F3 then mutes the signal <em>and</em> brings up the tuner in one press, like a real tuner pedal.</p>
+</div>
+
+<h2 id="pico"><span class="num">Section 4</span>The Pico</h2>
+<p>Four files at the root of the <code>CIRCUITPY</code> drive, plus two libraries.</p>
+
+<div class="warn">
+<p><strong>Prerequisites.</strong> <code>adafruit_midi/</code> and <code>adafruit_character_lcd/</code> must be in <code>/lib</code>, from the official CircuitPython bundle matching your major version. Without them the imports fail and the pedal doesn't start at all.</p>
+</div>
+
+<h3>boot.py</h3>
+<pre><code><span class="k">usb_midi</span>.enable()
+<span class="k">usb_cdc</span>.enable(console=True, data=True)
+<span class="k">supervisor</span>.set_usb_identification(product=<span class="s">"Pedalier"</span>)
+<span class="k">usb_midi</span>.set_names(streaming_interface_name=<span class="s">"Switches"</span>)</code></pre>
+<p>RP2040 endpoint budget: 7 usable pairs. CIRCUITPY (1) + console (2) + data (2) + MIDI (1) = 6, one pair of headroom. If it drops into safe mode, set <code>console=False</code>.</p>
+
+<div class="warn">
+<p><strong>Hard reset required.</strong> <code>boot.py</code> is only re-read at power-up. Saving the file isn't enough. Its <code>print()</code> output goes to <code>boot_out.txt</code>, never to the console.</p>
+</div>
+
+<h3>The four modules</h3>
+<table>
+<tr><th>File</th><th>Role</th></tr>
+<tr><td><code>boot.py</code></td><td>USB identification, enabling the data port</td></tr>
+<tr><td><code>code.py</code></td><td>Debounced scanning, MIDI, LEDs, main loop</td></tr>
+<tr><td><code>ecran.py</code></td><td>LCD driver, transliteration, per-line cache, animations</td></tr>
+<tr><td><code>retour_pipedal.py</code></td><td>Bidirectional serial protocol</td></tr>
+</table>
+
+<pre><code>retour.init(allumer_exclusif, NB_SNAPSHOTS, ecran, callback_led=led)
+retour.appui(i)                  <span class="c"># snapshot switch</span>
+retour.attente_changement(i)     <span class="c"># preset switch</span>
+retour.tick()                    <span class="c"># in the main loop</span></code></pre>
+<p>Source comments are in French.</p>
+
+<h2 id="display"><span class="num">Section 5</span>Display</h2>
+
+<h3>Startup</h3>
+<div class="lcd">+----------------+
+|  CRADE CORTEX  |
+|##########      |
++----------------+</div>
+
+<p>Letters appear one at a time, in their final position. <strong>No continuous motion</strong>: a liquid-crystal display takes 150 to 250 ms to flip a pixel, and any sliding turns to mush. A fixed reveal stays crisp because no crystal has to travel back.</p>
+
+<p>The bar uses <strong>five custom CGRAM characters</strong> — one, two, three, four, five columns of pixels — giving 80 steps instead of 16. CGRAM slot 0 is left free: <code>chr(0)</code> terminates a Python string and would break the write.</p>
+
+<div class="key">
+<p><strong>It doesn't lie.</strong> It climbs to 94 %, then stops and pulses in place until the Pi says something. Booting without the daemon is immediately visible: the bar pulses indefinitely.</p>
+</div>
+
+<pre><code>T_LETTRE = 0.1                       <span class="c"># one letter appearing</span>
+T_TITRE  = T_LETTRE * len(TITRE)     <span class="c"># derived</span>
+T_PAUSE  = 0.25                      <span class="c"># dead time before the bar</span>
+T_BARRE  = 1.60                      <span class="c"># fill up to the plateau</span>
+T_FINAL  = 0.35                      <span class="c"># hold at full</span></code></pre>
+<p>Below 0.06 s per letter the smearing returns. That's the panel's physical limit, not a code defect.</p>
+
+<h3>Normal</h3>
+<div class="lcd">+----------------+
+|Fender Clean    |
+|2 Chorus        |
++----------------+</div>
+<p>Line 1: pedalboard name over 15 characters, plus a link indicator in column 16. Line 2: number and name of the active snapshot. A <code>!</code> at the end of line 1 flags a lost heartbeat.</p>
+
+<h3>Tuner</h3>
+<div class="lcd">+----------------+
+|      E2   -12c |
+|.......|#|......|
++----------------+</div>
+<p>The <code>#</code> marker moves, with the centre reference on columns 7 and 8. Within 4 cents, <code>-12c</code> becomes <code>OK</code>. If the pedalboard has no TooB Tuner, the display reads <code>absent du pdb</code>.</p>
+
+<h2 id="serial"><span class="num">Section 6</span>Serial protocol</h2>
+<p>One ASCII line per event, terminated by <code>\n</code>. Bidirectional.</p>
+
+<h3>Pi → Pico</h3>
+<table>
+<tr><th>Frame</th><th>Meaning</th></tr>
+<tr><td><code>S&lt;n&gt;</code></td><td>Snapshot <em>n</em> active — 1-based</td></tr>
+<tr><td><code>HB</code></td><td>Heartbeat, 1 Hz</td></tr>
+<tr><td><code>N:&lt;text&gt;</code></td><td>Pedalboard name, truncated to 20 characters</td></tr>
+<tr><td><code>M:&lt;text&gt;</code></td><td>Active snapshot name</td></tr>
+<tr><td><code>T:&lt;note&gt;:&lt;cents&gt;</code></td><td>Tuner, e.g. <code>T:E2:-12</code></td></tr>
+<tr><td><code>T:-</code></td><td>Tuner, no signal</td></tr>
+<tr><td><code>T:!</code></td><td>No tuner in the pedalboard</td></tr>
+</table>
+
+<h3>Pico → Pi</h3>
+<table>
+<tr><th>Frame</th><th>Meaning</th></tr>
+<tr><td><code>A1</code> / <code>A0</code></td><td>Enter / leave tuner mode</td></tr>
+<tr><td><code>?</code></td><td>Request full state, at startup</td></tr>
+</table>
+<p>Any received frame counts as a sign of life, not just <code>HB</code>.</p>
+
+<h3>The safeguards</h3>
+<table>
+<tr><th>Safeguard</th><th>Delay</th><th>Behaviour</th></tr>
+<tr><td>Optimistic fallback</td><td>200 ms</td><td>No confirmation: the LED lights anyway. Degraded but playable.</td></tr>
+<tr><td>Heartbeat</td><td>3 s</td><td>Three missed beats: slow blink and a <code>!</code> on screen.</td></tr>
+<tr><td>Load wait</td><td>2.5 s</td><td>On F1/F2, the LED stays lit until the new preset name arrives.</td></tr>
+<tr><td><code>?</code> beacon</td><td>1 Hz</td><td>Requests state until the Pi speaks up.</td></tr>
+</table>
+<p>Loading a NAM model takes one to two seconds: a simple flash would be over before anything moved. And without the first two safeguards, a dead link leaves the LEDs frozen on the last value received — you'd be playing blind without knowing it.</p>
+
+<h2 id="resync"><span class="num">Section 7</span>Resynchronisation</h2>
+
+<div class="warn">
+<p><strong>The trap.</strong> The daemon caches state and only emits on change. When the Pico restarts, nothing has changed on PiPedal's side: it receives only <code>HB</code> and stays blind. Worse, a partial change such as a snapshot sends only <code>S</code> and <code>M</code>, not <code>N:</code>, leaving line 1 empty.</p>
+</div>
+
+<p>Two independent mechanisms, because they cover different cases.</p>
+
+<p><strong>On the Pi.</strong> <code>LienPico.reconnecte()</code> flags a serial port reopening; the daemon then pushes the whole state back. Covers physical unplugging and hard resets.</p>
+
+<p><strong>On the Pico.</strong> While nothing has arrived, the Pico emits <code>?</code> once a second and the daemon answers by pushing state. Covers what the first mechanism misses: saving <code>code.py</code>, where the Pico restarts without the port always disappearing on the Linux side.</p>
+
+<p>The beacon stops by itself on the first received frame.</p>
+
+<h2 id="pi"><span class="num">Section 8</span>The Pi</h2>
+
+<h3>The daemon</h3>
+<pre><code>sudo apt install python3-serial
+pip3 install websockets --break-system-packages
+python3 pipedal_bridge.py -v</code></pre>
+<p>It subscribes to the websocket on localhost, caches state and only emits on change. Reconnection uses exponential backoff, and it survives the serial port disappearing.</p>
+
+<h3>udev rule</h3>
+<p>Without it, the <code>ttyACM</code> number changes with plug order. The Pi already carries the UMC404HD and a second CircuitPython device named <code>Expression</code>: the conflict is real.</p>
+<pre><code><span class="c"># /etc/udev/rules.d/99-pipedal-pico.rules</span>
+SUBSYSTEM==<span class="s">"tty"</span>, ATTRS{idVendor}==<span class="s">"239a"</span>, ATTRS{product}==<span class="s">"Pedalier"</span>, \
+  ENV{ID_USB_INTERFACE_NUM}==<span class="s">"02"</span>, SYMLINK+=<span class="s">"pipedal-pico"</span></code></pre>
+<pre><code>sudo udevadm control --reload &amp;&amp; sudo udevadm trigger
+ls -l /dev/pipedal-pico</code></pre>
+<p>Interface <strong>02</strong> is the data port. The console carries a different number.</p>
+
+<h3>systemd service</h3>
+<pre><code><span class="c"># /etc/systemd/system/pipedal-bridge.service</span>
+[Unit]
+Description=PiPedal to Pico bridge
+After=pipedald.service
+Wants=pipedald.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/crade-cortex
+ExecStart=/usr/bin/python3 /opt/crade-cortex/pipedal_bridge.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+<pre><code>sudo systemctl daemon-reload
+sudo systemctl enable --now pipedal-bridge
+journalctl -u pipedal-bridge -f</code></pre>
+
+<div class="note">
+<p><strong>The Python path must be the venv's</strong> if <code>websockets</code> lives there rather than system-wide. And <code>After=</code> orders startup without guaranteeing the websocket is ready: the daemon will fail once or twice at boot and then reconnect. That's normal.</p>
+</div>
+
+<pre><code>groups | grep dialout || sudo usermod -aG dialout $USER</code></pre>
+<p>Stop the service before running the daemon by hand: two instances would fight over the serial port.</p>
+
+<h2 id="ws"><span class="num">Section 9</span>Websocket protocol</h2>
+
+<div class="warn">
+<p><strong>Internal, undocumented API.</strong> Reverse-engineered by capture on 2.0.110. It will change between versions — re-verify after every PiPedal update.</p>
+</div>
+
+<p>Endpoint: <code>ws://127.0.0.1:80/pipedal</code>. Full reference in <a href="PROTOCOL.md">PROTOCOL.md</a>.</p>
+
+<h3>Envelope</h3>
+<pre><code><span class="c">// request with no argument</span>
+[{<span class="s">"message"</span>: <span class="s">"hello"</span>, <span class="s">"replyTo"</span>: 2}]
+
+<span class="c">// request with an argument</span>
+[{<span class="s">"message"</span>: <span class="s">"monitorPort"</span>, <span class="s">"replyTo"</span>: 24},
+ {<span class="s">"instanceId"</span>: 16, <span class="s">"key"</span>: <span class="s">"FREQ"</span>, <span class="s">"updateRate"</span>: 0.05}]
+
+<span class="c">// server response</span>
+[{<span class="s">"reply"</span>: 2, <span class="s">"message"</span>: <span class="s">"ehlo"</span>}, 20]</code></pre>
+
+<h3>The handshake</h3>
+<div class="key">
+<p>The client <strong>must</strong> send <code>hello</code> on connect. Without it the server never registers it as a recipient and broadcasts nothing.</p>
+</div>
+<p>This caused the daemon's first failure: it connected, retrieved the initial state correctly, then stayed silent forever.</p>
+
+<h3>Acknowledgements</h3>
+<p>When a pushed message's header carries <code>replyTo</code>, the client must answer. This is flow control.</p>
+<pre><code>[{<span class="s">"reply"</span>: 996, <span class="s">"message"</span>: <span class="s">"onVuUpdate"</span>}, true]</code></pre>
+
+<h3>Snapshot or preset change</h3>
+<p>Broadcast to every connected client, <em>including the one that caused it</em>. That's what makes confirmation work when the change comes from your foot.</p>
+<pre><code>[{<span class="s">"message"</span>: <span class="s">"onPedalboardChanged"</span>},
+ {<span class="s">"clientId"</span>: -1,
+  <span class="s">"pedalboard"</span>: {
+    <span class="s">"name"</span>: <span class="s">"Fender Clean"</span>,
+    <span class="s">"selectedSnapshot"</span>: 1,        <span class="c">// ZERO-BASED</span>
+    <span class="s">"items"</span>: [{<span class="s">"instanceId"</span>: 16, <span class="s">"uri"</span>: <span class="s">"…toob-tuner"</span>}, …],
+    <span class="s">"snapshots"</span>: [{<span class="s">"name"</span>: <span class="s">"Default"</span>, <span class="s">"color"</span>: <span class="s">"purple"</span>}, …]
+  }}]</code></pre>
+<p>The index to relay is <code>body.pedalboard.selectedSnapshot</code>, <strong>zero-based</strong>. The serial protocol is 1-based, hence the <code>+1</code> in the daemon.</p>
+
+<div class="note">
+<p><strong>Volume.</strong> Each broadcast is around 9 kB: PiPedal resends the whole pedalboard, not just the index. Harmless at a few changes a minute, but <code>max_size</code> must be raised on the connection.</p>
+</div>
+
+<h3>Tuner</h3>
+<pre><code>[{<span class="s">"message"</span>: <span class="s">"monitorPort"</span>, <span class="s">"replyTo"</span>: 24},
+ {<span class="s">"instanceId"</span>: 16, <span class="s">"key"</span>: <span class="s">"FREQ"</span>, <span class="s">"updateRate"</span>: 0.05}]
+<span class="c">// the response carries the subscription handle</span>
+[{<span class="s">"reply"</span>: 24, <span class="s">"message"</span>: <span class="s">"monitorPort"</span>}, 29]
+
+<span class="c">// then, periodically</span>
+[{<span class="s">"replyTo"</span>: 2, <span class="s">"message"</span>: <span class="s">"onMonitorPortOutput"</span>},
+ {<span class="s">"subscriptionHandle"</span>: 29, <span class="s">"value"</span>: 40.12}]
+
+<span class="c">// unsubscribe</span>
+[{<span class="s">"message"</span>: <span class="s">"unmonitorPort"</span>}, 29]</code></pre>
+
+<p>The TooB Tuner's <code>FREQ</code> port gives a <strong>floating-point MIDI note number</strong>, <code>-1</code> when there is no signal. Integer part: the note. Decimal: the deviation in cents.</p>
+
+<div class="key">
+<p><strong>The instanceId is not hard-coded.</strong> It happens to be 16 in the current pedalboard but changes with the preset. The daemon finds it by matching the <code>toob-tuner</code> URI in <code>items</code>, and re-subscribes when it moves.</p>
+</div>
+
+<p>The daemon quantises cents in steps of 2 and emits no more than 11 frames per second. A tuner naturally jitters on the last cent: without this the display would shimmer constantly and block the Pico. The subscription exists <strong>only</strong> during tuner mode, on the Pico's <code>A1</code> command.</p>
+
+<h2 id="pitfalls"><span class="num">Section 10</span>Known pitfalls</h2>
+
+<h3>Stray binding on CC 102</h3>
+<p>The TooB Tuner carries a <code>__bypass</code> binding on CC 102, duplicating <code>snapshot1</code>. One press triggers both. Remove it in PiPedal.</p>
+
+<h3>Daemon cache</h3>
+<p>It only emits on change. After a Pico restart, without the mechanisms in section 7, the pedal stays blind.</p>
+
+<h3>DTR</h3>
+<p><code>usb_cdc.data.read()</code> returns nothing until the host asserts DTR. <code>pyserial</code> does it on open; a shell <code>printf</code> does not. A redirection test can therefore fail on a perfectly good port.</p>
+
+<h3>LCD response time</h3>
+<p>150 to 250 ms per pixel. Any continuously moving animation blurs. Fixed reveals, and bars that only ever add pixels, stay crisp.</p>
+
+<h3>Pico USB restart</h3>
+<p>Every save of <code>code.py</code> makes the serial port disappear and come back. The daemon must absorb that — it does.</p>
+
+<h3>Pin ordering</h3>
+<p>Swapping two entries between <code>BROCHES_LEDS</code> and <code>BRILLANCE</code> is invisible while all LEDs are the same colour, and painful to diagnose afterwards.</p>
+
+<h3>SSH sessions</h3>
+<p>A daemon launched in the foreground dies with the session. Use <code>tmux</code> for debugging, systemd for real.</p>
+
+<h2 id="bringup"><span class="num">Section 11</span>Bring-up</h2>
+<p>Each step validates the previous one.</p>
+
+<ol class="steps">
+<li><code>adafruit_midi/</code> and <code>adafruit_character_lcd/</code> copied into <code>/lib</code> on CIRCUITPY.</li>
+<li><code>boot.py</code> in place, hard reset. <code>ls /dev/ttyACM*</code> should show two ports.</li>
+<li>udev rule installed. <code>ls -l /dev/pipedal-pico</code> should point to one of them.</li>
+<li>Contrast set: black blocks on power-up prove the LCD is alive. Turn until they fade.</li>
+<li><code>printf 'S3\n' &gt; /dev/pipedal-pico</code> — LED 3 lights. The whole USB chain is validated without a line of websocket.</li>
+<li><code>printf 'N:Test\nS2\nM:Chorus\n' &gt; /dev/pipedal-pico</code> — the display shows it.</li>
+<li><code>python3 pipedal_bridge.py -v</code> — the bar fills and the display switches to normal mode.</li>
+<li>Change a snapshot from the web interface — LED and display follow.</li>
+<li>Press F3 — tuner mode, and <code>Accordeur : abonnement sur instance 16</code> in the logs.</li>
+</ol>
+
+<h2 id="todo"><span class="num">Section 12</span>To do</h2>
+
+<ul class="todo">
+<li>Remove the <code>__bypass</code> binding on CC 102</li>
+<li>Wire the remaining switches and LEDs</li>
+<li>Assign F4</li>
+<li>Tuner as a bar graph across the 8 LEDs, alongside the display</li>
+<li>I²C backpack for the LCD — 4 wires instead of 8 — or a 256×64 SSD1322 OLED for stage readability</li>
+<li>WS2812 RGB LEDs under the snapshots: the colour is already in <code>snapshots[i].color</code></li>
+<li>Enclosure: bring X under 220 mm, rear wall to 3 mm minimum, compensate holes by 0.2 to 0.3 mm for the 0.6 mm nozzle</li>
+</ul>
+
+<footer>
+pico/ &nbsp; boot.py · code.py · ecran.py · retour_pipedal.py · lib/adafruit_midi · lib/adafruit_character_lcd<br>
+pi/ &nbsp;&nbsp;&nbsp; pipedal_bridge.py
+</footer>
+
+</main>
+</div>
+
+<script>
+(function(){
+  var liens = [].slice.call(document.querySelectorAll('nav a'));
+  var cibles = liens.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  if(!('IntersectionObserver' in window)) return;
+  var obs = new IntersectionObserver(function(entrees){
+    entrees.forEach(function(e){
+      if(!e.isIntersecting) return;
+      var i = cibles.indexOf(e.target);
+      liens.forEach(function(a,j){ a.classList.toggle('on', j===i); });
+    });
+  }, {rootMargin:'0px 0px -72% 0px'});
+  cibles.forEach(function(c){ if(c) obs.observe(c); });
+})();
+</script>
+</body>
+</html>
