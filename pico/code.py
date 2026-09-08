@@ -48,7 +48,7 @@ BROCHES_LEDS = (
 
 # Egalisation logicielle par canal, en pourcentage de duty.
 # BRILLANCE[i] s'applique a BROCHES_LEDS[i] : garder le meme ordre.
-BRILLANCE = (12, 12, 12, 12, 12, 12, 12, 12)
+BRILLANCE = (1, 16, 16, 6, 3, 3, 3, 3)
 
 # LCD1602 en mode 4 bits. R/W du LCD doit etre cable a la masse.
 LCD_RS = board.GP10
