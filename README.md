@@ -15,7 +15,9 @@ PiPedal's websocket and pushes state back over the same USB cable. One state
 exists — PiPedal's — and the whole class of desynchronisation bugs disappears by
 construction.
 
-This repository also contains
+**3D files (.STL and .SLDPRT) are availables in the repo.**
+
+This repository also contains 
 [documentation of PiPedal's undocumented internal websocket protocol](docs/en/PROTOCOL.md),
 reverse-engineered from version 2.0.110. That is probably the most reusable part
 of it for other projects.
