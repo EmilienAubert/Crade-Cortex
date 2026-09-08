@@ -425,7 +425,7 @@ python3 pipedal_bridge.py -v</code></pre>
 <p>Il s'abonne au websocket en localhost, met l'état en cache et n'émet que sur changement. Reconnexion avec backoff exponentiel, et disparition du port série sans plantage.</p>
 
 <h3>Règle udev</h3>
-<p>Sans elle, le numéro de <code>ttyACM</code> change selon l'ordre de branchement. Le Pi porte déjà l'UMC404HD et un second périphérique CircuitPython nommé <code>Expression</code> : le conflit est réel.</p>
+<p>Sans elle, le numéro de <code>ttyACM</code> peut changer selon l'ordre d'énumération des périphériques USB. Dès que plusieurs interfaces CDC/ACM sont présentes, un chemin fixe comme <code>/dev/ttyACM0</code> n'est donc pas fiable ; la règle ci-dessous crée un nom stable pour le pédalier.</p>
 <pre><code><span class="c"># /etc/udev/rules.d/99-pipedal-pico.rules</span>
 SUBSYSTEM==<span class="s">"tty"</span>, ATTRS{idVendor}==<span class="s">"239a"</span>, ATTRS{product}==<span class="s">"Pedalier"</span>, \
   ENV{ID_USB_INTERFACE_NUM}==<span class="s">"02"</span>, SYMLINK+=<span class="s">"pipedal-pico"</span></code></pre>
