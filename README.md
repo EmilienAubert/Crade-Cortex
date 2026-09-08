@@ -2,6 +2,10 @@
 
 **English** · [Français](README.fr.md)
 
+<img width="1500" height="1313" alt="image" src="https://github.com/user-attachments/assets/7a9dd9d3-4ad2-4522-8d10-5fd158655162" />
+<img width="1468" height="1243" alt="image" src="https://github.com/user-attachments/assets/e305b412-cfc8-471e-af49-00243af7e415" />
+
+
 A DIY MIDI footswitch controller for [PiPedal](https://github.com/rerdavies/pipedal)
 with **closed-loop state feedback**: the LEDs and display don't show what your
 foot asked for, they show what the Raspberry Pi confirmed.
