@@ -11,11 +11,16 @@ s'abonne au websocket de PiPedal et renvoie l'état sur le même câble USB. Un 
 état existe — celui de PiPedal — et toute la classe de bugs de désynchronisation
 disparaît par construction.
 
+Les fichiers 3D pour l'impression sont disponibles dans le repo.
+
 > **English summary.** A DIY MIDI footswitch controller for PiPedal, with
 > closed-loop state feedback over the same USB cable that carries MIDI. Includes
 > [documentation of PiPedal's undocumented internal websocket
 > protocol](docs/fr/PROTOCOLE.md), reverse-engineered from version 2.0.110 — likely
 > the most reusable part of this repository for other projects.
+
+<img width="1500" height="1313" alt="image" src="https://github.com/user-attachments/assets/7a9dd9d3-4ad2-4522-8d10-5fd158655162" />
+<img width="1468" height="1243" alt="image" src="https://github.com/user-attachments/assets/e305b412-cfc8-471e-af49-00243af7e415" />
 
 ---
 
