@@ -197,18 +197,105 @@ footer{margin-top:90px;padding-top:20px;border-top:1px solid var(--rule);
   <figcaption>Trois flux sur un seul câble USB. Le MIDI monte par ALSA directement vers <code>pipedald</code> ; l'état redescend par le démon, et le Pico lui répond sur le même port série.</figcaption>
 </figure>
 
+<!-- ===================================================== -->
 <h2 id="vue"><span class="num">Section 1</span>Vue d'ensemble</h2>
 
 <div class="key">
-<p><strong>PiPedal est la seule source de vérité.</strong> Le Pico n'a pas d'état propre. Il envoie un CC et attend. La LED ne s'allume que sur confirmation.</p>
+<p><strong>PiPedal est la seule source de vérité.</strong> Le Pico n'a pas d'état propre. Il envoie un CC et attend. La LED ne s'allume qu'à la confirmation.</p>
 </div>
 
+<table>
+<tr><th>Sens</th><th>Transport</th><th>Contenu</th></tr>
+<tr><td>Pico → Pi</td><td>USB MIDI (ALSA)</td><td>CC 102–105, 110–113</td></tr>
+<tr><td>Pi → Pico</td><td>USB CDC série</td><td>état, noms, accordeur</td></tr>
+<tr><td>Pico → Pi</td><td>USB CDC série</td><td>mode accordeur, demande d'état</td></tr>
+</table>
+
+<h3>Pourquoi ce retour existe</h3>
+<p>Sans lui, le Pico décide et espère que le Pi suit. Ça tient tant qu'il est le seul à agir, et ça décroche dans quatre cas : au démarrage, quand on touche à l'interface depuis le téléphone, si <code>pipedald</code> redémarre seul, et sur un changement de banque.</p>
+<p>Avec le retour, un seul état existe. Toute la classe de bugs de désynchronisation disparaît par construction.</p>
+
+<!-- ===================================================== -->
 <h2 id="materiel"><span class="num">Section 2</span>Matériel</h2>
-<p>Le pédalier repose sur un Raspberry Pi Pico, huit footswitches, huit LED et un LCD1602. Le détail du câblage est dans <a href="CABLAGE.md">CABLAGE.md</a>.</p>
 
-<h2 id="switches"><span class="num">Section 3</span>Switches</h2>
-<p>Les quatre switches avant envoient les snapshots, les quatre arrière servent aux commandes de navigation et à l'accordeur. Voir la documentation de câblage pour les GPIO et CC exacts.</p>
+<table>
+<tr><th>Élément</th><th>Détail</th></tr>
+<tr><td>Contrôleur</td><td>Raspberry Pi Pico (RP2040), CircuitPython</td></tr>
+<tr><td>Hôte</td><td>Raspberry Pi, PiPedal 2.0.110</td></tr>
+<tr><td>Interface audio</td><td>Behringer UMC404HD (<code>hw:U192k</code>), 48 kHz, 48 frames, 4 buffers</td></tr>
+<tr><td>Afficheur</td><td>LCD1602 QAPASS, HD44780, mode 4 bits</td></tr>
+<tr><td>Switches</td><td>8 — S1–S4 snapshots, F1–F4 fonctions</td></tr>
+<tr><td>LED</td><td>8, PWM 2 kHz, ~12 % de rapport cyclique</td></tr>
+</table>
 
+<h3>Brochage</h3>
+<table>
+<tr><th>Broches</th><th>Rôle</th></tr>
+<tr><td><code>GP0</code>–<code>GP7</code></td><td>Switches S1–S4 puis F1–F4</td></tr>
+<tr><td><code>GP8</code>, <code>GP9</code></td><td>LED 1 et 2</td></tr>
+<tr><td><code>GP10</code>–<code>GP15</code></td><td>LCD1602 — RS, E, D4–D7</td></tr>
+<tr><td><code>GP16</code>–<code>GP21</code></td><td>LED 3 à 8</td></tr>
+</table>
+<p>Switches en pull-up interne, actifs à l'état bas. Il reste <code>GP22</code> et <code>GP26</code>–<code>GP28</code> libres.</p>
+
+<div class="note">
+<p><strong>Ordre des tuples.</strong> <code>BROCHES_SWITCHES</code>, <code>BROCHES_LEDS</code> et <code>BRILLANCE</code> doivent rester alignés. <code>BRILLANCE[i]</code> s'applique à <code>BROCHES_LEDS[i]</code>.</p>
+</div>
+
+<h3>Câblage du LCD1602</h3>
+<table>
+<tr><th>Broche LCD</th><th>Vers</th></tr>
+<tr><td>1 VSS, 5 R/W, 16 K</td><td>GND — broche 38 du Pico</td></tr>
+<tr><td>2 VDD, 15 A</td><td>VBUS — broche 40, <strong>5 V</strong></td></tr>
+<tr><td>3 V0</td><td>curseur d'un potentiomètre 10 kΩ</td></tr>
+<tr><td>4 RS</td><td><code>GP10</code></td></tr>
+<tr><td>6 E</td><td><code>GP11</code></td></tr>
+<tr><td>11–14 D4–D7</td><td><code>GP12</code> → <code>GP15</code></td></tr>
+</table>
+<p>Les broches 7 à 10 restent en l'air : c'est le mode 4 bits.</p>
+
+<div class="warn">
+<p><strong>Le potentiomètre de contraste n'est pas optionnel.</strong> V0 flottant donne un écran soit noir, soit vide — première cause de « mon LCD ne marche pas ». Extrémités au 5 V et à la masse, curseur sur V0.</p>
+</div>
+
+<p><strong>R/W impérativement à la masse.</strong> Le LCD passe en écriture seule et ne peut plus renvoyer du 5 V vers le Pico. C'est ce qui rend le mélange 5 V / 3,3 V sans danger.</p>
+
+<p><strong>La résistance du rétroéclairage est déjà sur la carte</strong> — R8, marquée <code>101</code>, soit 100 Ω — sur les modules QAPASS 1602A. La broche 15 va donc directement au 5 V. À vérifier sur un autre modèle.</p>
+
+<div class="note">
+<p>Le HD44780 est alimenté en 5 V mais lit des sorties 3,3 V. Officiellement marginal, son seuil haut étant à 3,5 V. En pratique ça marche. Si l'affichage devient erratique, c'est là qu'il faut regarder.</p>
+</div>
+
+<h3>Masse</h3>
+<p>Topologie en étoile : un fil commun court soudé à la masse du Pi, chaque masse de switch et de LED arrivant indépendamment. Meilleure isolation des défauts que le chaînage. Aucun signal audio ne traverse le boîtier, donc aucune question de boucle de masse.</p>
+
+<!-- ===================================================== -->
+<h2 id="switches"><span class="num">Section 3</span>Affectation des switches</h2>
+
+<table>
+<tr><th>Switch</th><th>CC</th><th>Rôle</th><th>LED</th></tr>
+<tr><td>S1–S4</td><td>102–105</td><td>Snapshots</td><td>Exclusive, sur confirmation</td></tr>
+<tr><td>F1</td><td>110</td><td>Preset précédent</td><td>Allumée pendant le chargement</td></tr>
+<tr><td>F2</td><td>111</td><td>Preset suivant</td><td>Allumée pendant le chargement</td></tr>
+<tr><td>F3</td><td>112</td><td>Bascule accordeur</td><td>Allumée tant que le mode dure</td></tr>
+<tr><td>F4</td><td>113</td><td>Libre</td><td>Flash de 120 ms</td></tr>
+</table>
+
+<p>Chaque appui envoie la valeur 127, chaque relâchement la valeur 0. Le zéro est indispensable : les bindings PiPedal en front montant ne se réarment pas sans lui.</p>
+
+<h3>Bindings à créer dans PiPedal</h3>
+<table>
+<tr><th>Symbole système</th><th>CC</th></tr>
+<tr><td><code>snapshot1</code> … <code>snapshot4</code></td><td>102 … 105</td></tr>
+<tr><td><code>prevProgram</code></td><td>110</td></tr>
+<tr><td><code>nextProgram</code></td><td>111</td></tr>
+</table>
+
+<div class="key">
+<p>Optionnel mais recommandé : lier le CC 112 au contrôle <code>MUTE</code> du TooB Tuner. F3 coupe alors le son <em>et</em> affiche l'accordeur d'un seul geste, comme une vraie pédale d'accordage.</p>
+</div>
+
+<!-- ===================================================== -->
 <h2 id="pico"><span class="num">Section 4</span>Le Pico</h2>
 <p>Quatre fichiers à la racine du lecteur <code>CIRCUITPY</code>, plus une bibliothèque.</p>
 
@@ -241,28 +328,45 @@ retour.appui(i)                  <span class="c"># switch snapshot</span>
 retour.attente_changement(i)     <span class="c"># switch preset</span>
 retour.tick()                    <span class="c"># dans la boucle</span></code></pre>
 
+<!-- ===================================================== -->
 <h2 id="affichage"><span class="num">Section 5</span>Affichage</h2>
+
 <h3>Démarrage</h3>
 <div class="lcd">+----------------+
 |  CRADE CORTEX  |
 |##########      |
 +----------------+</div>
-<p>Les lettres apparaissent une par une, à leur place définitive.</p>
+
+<p>Les lettres apparaissent une par une, à leur place définitive. <strong>Aucun mouvement continu</strong> : un LCD à cristaux liquides met 150 à 250 ms à basculer un pixel, et tout glissement se transforme en bouillie. Une apparition fixe reste nette parce qu'aucun cristal n'a besoin de revenir en arrière.</p>
+
+<p>La barre utilise <strong>cinq caractères personnalisés en CGRAM</strong> — une, deux, trois, quatre, cinq colonnes de pixels — ce qui donne 80 pas au lieu de 16. L'emplacement CGRAM 0 est laissé libre : <code>chr(0)</code> termine une chaîne Python et casserait l'affichage.</p>
+
+<div class="key">
+<p><strong>Elle ne ment pas.</strong> Elle monte jusqu'à 94 % puis s'arrête et bat sur place tant que le Pi n'a rien dit. Démarrer sans le démon se voit immédiatement : la barre pulse indéfiniment.</p>
+</div>
+
+<pre><code>T_LETTRE = 0.1                       <span class="c"># apparition d'une lettre</span>
+T_TITRE  = T_LETTRE * len(TITRE)     <span class="c"># se recalcule seul</span>
+T_PAUSE  = 0.25                      <span class="c"># temps mort avant la barre</span>
+T_BARRE  = 1.60                      <span class="c"># remplissage jusqu'au palier</span>
+T_FINAL  = 0.35                      <span class="c"># maintien de la barre pleine</span></code></pre>
+<p>En dessous de 0,06 s par lettre, la traînée revient. C'est la limite physique de la dalle, pas un défaut de code.</p>
 
 <h3>Normal</h3>
 <div class="lcd">+----------------+
 |Fender Clean    |
 |2 Chorus        |
 +----------------+</div>
-<p>Ligne 1 : nom du pedalboard sur 15 caractères, plus un indicateur de lien en colonne 16. Ligne 2 : numéro et nom du snapshot actif.</p>
+<p>Ligne 1 : nom du pedalboard sur 15 caractères, plus un indicateur de lien en colonne 16. Ligne 2 : numéro et nom du snapshot actif. Un <code>!</code> en bout de ligne 1 signale la perte du heartbeat.</p>
 
 <h3>Accordeur</h3>
 <div class="lcd">+----------------+
 |      E2   -12c |
 |.......|#|......|
 +----------------+</div>
-<p>Le marqueur <code>#</code> se déplace, le repère central occupe les colonnes 7 et 8.</p>
+<p>Le marqueur <code>#</code> se déplace, le repère central occupe les colonnes 7 et 8. Sous 4 cents d'écart, <code>-12c</code> devient <code>OK</code>. Si le pedalboard ne contient pas de TooB Tuner, l'écran affiche <code>absent du pdb</code>.</p>
 
+<!-- ===================================================== -->
 <h2 id="serie"><span class="num">Section 6</span>Protocole série</h2>
 <p>Une ligne ASCII par événement, terminée par <code>\n</code>. Bidirectionnel.</p>
 
@@ -271,9 +375,9 @@ retour.tick()                    <span class="c"># dans la boucle</span></code><
 <tr><th>Trame</th><th>Signification</th></tr>
 <tr><td><code>S&lt;n&gt;</code></td><td>Snapshot <em>n</em> actif — base 1</td></tr>
 <tr><td><code>HB</code></td><td>Battement de cœur, 1 Hz</td></tr>
-<tr><td><code>N:&lt;texte&gt;</code></td><td>Nom du pedalboard</td></tr>
+<tr><td><code>N:&lt;texte&gt;</code></td><td>Nom du pedalboard, tronqué à 20 caractères</td></tr>
 <tr><td><code>M:&lt;texte&gt;</code></td><td>Nom du snapshot actif</td></tr>
-<tr><td><code>T:&lt;note&gt;:&lt;cents&gt;</code></td><td>Accordeur</td></tr>
+<tr><td><code>T:&lt;note&gt;:&lt;cents&gt;</code></td><td>Accordeur, ex. <code>T:E2:-12</code></td></tr>
 <tr><td><code>T:-</code></td><td>Accordeur, aucun signal</td></tr>
 <tr><td><code>T:!</code></td><td>Aucun accordeur dans le pedalboard</td></tr>
 </table>
@@ -284,11 +388,36 @@ retour.tick()                    <span class="c"># dans la boucle</span></code><
 <tr><td><code>A1</code> / <code>A0</code></td><td>Entrée / sortie du mode accordeur</td></tr>
 <tr><td><code>?</code></td><td>Demande de l'état complet, au démarrage</td></tr>
 </table>
+<p>Toute trame reçue vaut signe de vie, pas seulement <code>HB</code>.</p>
 
+<h3>Les garde-fous</h3>
+<table>
+<tr><th>Garde-fou</th><th>Délai</th><th>Comportement</th></tr>
+<tr><td>Repli optimiste</td><td>200 ms</td><td>Pas de confirmation : la LED s'allume quand même. Dégradé, mais jouable.</td></tr>
+<tr><td>Heartbeat</td><td>3 s</td><td>Trois battements manqués : clignotement lent et <code>!</code> à l'écran.</td></tr>
+<tr><td>Chargement</td><td>2,5 s</td><td>Sur F1/F2, la LED reste allumée jusqu'au nouveau nom de preset.</td></tr>
+<tr><td>Balise <code>?</code></td><td>1 Hz</td><td>Réclame l'état tant que le Pi ne s'est pas manifesté.</td></tr>
+</table>
+<p>Charger un modèle NAM prend une à deux secondes : un simple flash se terminerait avant que quoi que ce soit ait bougé. Et sans les deux premiers garde-fous, un lien mort laisse les LED figées sur la dernière valeur reçue — on joue à l'aveugle sans le savoir.</p>
+
+<!-- ===================================================== -->
 <h2 id="resync"><span class="num">Section 7</span>Resynchronisation</h2>
-<p>Le Pico et le démon se resynchronisent après redémarrage ou perte du port série.</p>
 
+<div class="warn">
+<p><strong>Le piège.</strong> Le démon met l'état en cache et n'émet que sur changement. Quand le Pico redémarre, rien n'a changé côté PiPedal : il ne reçoit que des <code>HB</code> et reste aveugle. Pire, un changement partiel comme un snapshot ne renvoie que <code>S</code> et <code>M</code>, pas <code>N:</code>, laissant la ligne 1 vide.</p>
+</div>
+
+<p>Deux mécanismes indépendants, parce qu'ils ne couvrent pas les mêmes cas.</p>
+
+<p><strong>Côté Pi.</strong> <code>LienPico.reconnecte()</code> signale une réouverture du port série ; le démon renvoie alors tout l'état. Couvre le débranchement physique et le hard reset.</p>
+
+<p><strong>Côté Pico.</strong> Tant que rien n'est arrivé, le Pico émet <code>?</code> chaque seconde et le démon répond en repoussant l'état. Couvre le cas que le premier mécanisme rate : une sauvegarde de <code>code.py</code>, où le Pico redémarre sans que le port disparaisse toujours côté Linux.</p>
+
+<p>La balise s'arrête d'elle-même à la première trame reçue.</p>
+
+<!-- ===================================================== -->
 <h2 id="pi"><span class="num">Section 8</span>Le Pi</h2>
+
 <h3>Le démon</h3>
 <pre><code>sudo apt install python3-serial
 pip3 install websockets --break-system-packages
@@ -296,7 +425,7 @@ python3 pipedal_bridge.py -v</code></pre>
 <p>Il s'abonne au websocket en localhost, met l'état en cache et n'émet que sur changement. Reconnexion avec backoff exponentiel, et disparition du port série sans plantage.</p>
 
 <h3>Règle udev</h3>
-<p>Sans elle, le numéro de <code>ttyACM</code> peut changer selon l'ordre de branchement des périphériques USB.</p>
+<p>Sans elle, le numéro de <code>ttyACM</code> change selon l'ordre de branchement. Le Pi porte déjà l'UMC404HD et un second périphérique CircuitPython nommé <code>Expression</code> : le conflit est réel.</p>
 <pre><code><span class="c"># /etc/udev/rules.d/99-pipedal-pico.rules</span>
 SUBSYSTEM==<span class="s">"tty"</span>, ATTRS{idVendor}==<span class="s">"239a"</span>, ATTRS{product}==<span class="s">"Pedalier"</span>, \
   ENV{ID_USB_INTERFACE_NUM}==<span class="s">"02"</span>, SYMLINK+=<span class="s">"pipedal-pico"</span></code></pre>
@@ -321,22 +450,174 @@ RestartSec=2
 
 [Install]
 WantedBy=multi-user.target</code></pre>
+<pre><code>sudo systemctl daemon-reload
+sudo systemctl enable --now pipedal-bridge
+journalctl -u pipedal-bridge -f</code></pre>
 
+<div class="note">
+<p><strong>Le chemin Python doit être celui du venv</strong> si <code>websockets</code> y est installé et pas en système. Et <code>After=</code> ordonne le démarrage sans garantir que le websocket soit prêt : le démon échouera une ou deux fois au boot puis se reconnectera. C'est normal.</p>
+</div>
+
+<pre><code>groups | grep dialout || sudo usermod -aG dialout $USER</code></pre>
+<p>Arrêter le service avant de relancer le démon à la main : deux instances se battraient pour le port série.</p>
+
+<!-- ===================================================== -->
 <h2 id="ws"><span class="num">Section 9</span>Protocole websocket</h2>
-<div class="warn"><p><strong>API interne non documentée.</strong> Reverse-engineerée par capture sur la 2.0.110.</p></div>
+
+<div class="warn">
+<p><strong>API interne non documentée.</strong> Reverse-engineerée par capture sur la 2.0.110. Elle changera d'une version à l'autre — revérifier après chaque mise à jour de PiPedal.</p>
+</div>
+
 <p>Endpoint : <code>ws://127.0.0.1:80/pipedal</code></p>
 
+<h3>Enveloppe</h3>
+<pre><code><span class="c">// requete sans argument</span>
+[{<span class="s">"message"</span>: <span class="s">"hello"</span>, <span class="s">"replyTo"</span>: 2}]
+
+<span class="c">// requete avec argument</span>
+[{<span class="s">"message"</span>: <span class="s">"monitorPort"</span>, <span class="s">"replyTo"</span>: 24},
+ {<span class="s">"instanceId"</span>: 16, <span class="s">"key"</span>: <span class="s">"FREQ"</span>, <span class="s">"updateRate"</span>: 0.05}]
+
+<span class="c">// reponse du serveur</span>
+[{<span class="s">"reply"</span>: 2, <span class="s">"message"</span>: <span class="s">"ehlo"</span>}, 20]</code></pre>
+
+<h3>La poignée de main</h3>
+<div class="key">
+<p>Le client <strong>doit</strong> envoyer <code>hello</code> dès la connexion. Sans lui, le serveur ne l'enregistre pas comme destinataire et ne diffuse rien.</p>
+</div>
+<p>C'était la cause du premier échec du démon : il se connectait, obtenait bien l'état initial, puis restait muet indéfiniment.</p>
+
+<h3>Accusés de réception</h3>
+<p>Quand l'entête d'un message poussé contient <code>replyTo</code>, le client doit répondre. C'est du contrôle de flux.</p>
+<pre><code>[{<span class="s">"reply"</span>: 996, <span class="s">"message"</span>: <span class="s">"onVuUpdate"</span>}, true]</code></pre>
+<p><code>onPedalboardChanged</code> n'a pas de <code>replyTo</code> et ne demande donc rien.</p>
+
+<h3>Changement de snapshot ou de preset</h3>
+<p>Diffusé à tous les clients connectés, <em>y compris celui qui l'a provoqué</em>. C'est ce qui fait fonctionner la confirmation quand le changement vient du pied.</p>
+<pre><code>[{<span class="s">"message"</span>: <span class="s">"onPedalboardChanged"</span>},
+ {<span class="s">"clientId"</span>: -1,
+  <span class="s">"pedalboard"</span>: {
+    <span class="s">"name"</span>: <span class="s">"Fender Clean"</span>,
+    <span class="s">"selectedSnapshot"</span>: 1,        <span class="c">// BASE 0</span>
+    <span class="s">"items"</span>: [{<span class="s">"instanceId"</span>: 16, <span class="s">"uri"</span>: <span class="s">"…toob-tuner"</span>}, …],
+    <span class="s">"snapshots"</span>: [{<span class="s">"name"</span>: <span class="s">"Default"</span>, <span class="s">"color"</span>: <span class="s">"purple"</span>}, …]
+  }}]</code></pre>
+<p>L'index à relayer est <code>body.pedalboard.selectedSnapshot</code>, en <strong>base 0</strong>. Le protocole série est en base 1, d'où le <code>+1</code> dans le démon.</p>
+
+<div class="note">
+<p><strong>Volume.</strong> Chaque diffusion pèse environ 9 ko : PiPedal renvoie tout le pedalboard, pas seulement l'index. Sans conséquence à quelques changements par minute, mais <code>max_size</code> doit être relevé sur la connexion.</p>
+</div>
+
+<h3>État initial</h3>
+<pre><code>[{<span class="s">"message"</span>: <span class="s">"currentPedalboard"</span>, <span class="s">"replyTo"</span>: 2}]
+
+<span class="c">// reponse : le pedalboard est a la racine du corps,</span>
+<span class="c">// pas sous une cle "pedalboard"</span>
+[{<span class="s">"reply"</span>: 2, <span class="s">"message"</span>: <span class="s">"currentPedalboard"</span>},
+ {<span class="s">"name"</span>: <span class="s">"Fender Clean"</span>, <span class="s">"selectedSnapshot"</span>: 0}]</code></pre>
+
+<h3>Commande</h3>
+<pre><code>[{<span class="s">"message"</span>: <span class="s">"setSnapshot"</span>}, 0]</code></pre>
+
+<h3>Accordeur</h3>
+<pre><code>[{<span class="s">"message"</span>: <span class="s">"monitorPort"</span>, <span class="s">"replyTo"</span>: 24},
+ {<span class="s">"instanceId"</span>: 16, <span class="s">"key"</span>: <span class="s">"FREQ"</span>, <span class="s">"updateRate"</span>: 0.05}]
+<span class="c">// reponse : le handle d'abonnement</span>
+[{<span class="s">"reply"</span>: 24, <span class="s">"message"</span>: <span class="s">"monitorPort"</span>}, 29]
+
+<span class="c">// puis, periodiquement :</span>
+[{<span class="s">"replyTo"</span>: 2, <span class="s">"message"</span>: <span class="s">"onMonitorPortOutput"</span>},
+ {<span class="s">"subscriptionHandle"</span>: 29, <span class="s">"value"</span>: 40.12}]
+
+<span class="c">// desabonnement</span>
+[{<span class="s">"message"</span>: <span class="s">"unmonitorPort"</span>}, 29]</code></pre>
+
+<p><code>FREQ</code> du TooB Tuner donne un <strong>numéro de note MIDI flottant</strong>, <code>-1</code> quand il n'y a pas de signal. Partie entière : la note. Décimale : l'écart en centièmes de demi-ton.</p>
+
+<div class="key">
+<p><strong>L'instanceId n'est pas codé en dur.</strong> Elle vaut 16 dans le pedalboard actuel mais change avec le preset. Le démon la retrouve en cherchant l'URI <code>toob-tuner</code> dans <code>items</code>, et se réabonne si elle bouge.</p>
+</div>
+
+<p>Le démon quantifie les cents par pas de 2 et n'émet pas plus de 11 trames par seconde. Un accordeur bruite naturellement au dernier cent : sans ça, l'affichage vibrerait en permanence et bloquerait le Pico. L'abonnement n'existe <strong>que</strong> pendant le mode accordeur, sur commande <code>A1</code> du Pico.</p>
+
+<h3>Autres messages observés</h3>
+<p><code>version</code>, <code>plugins</code>, <code>pluginClasses</code>, <code>getPresets</code>, <code>getBankIndex</code>, <code>getSystemMidiBindings</code>, <code>getJackConfiguration</code>, <code>addVuSubscription</code>, <code>onVuUpdate</code>.</p>
+
+<!-- ===================================================== -->
 <h2 id="pieges"><span class="num">Section 10</span>Pièges connus</h2>
-<p>Consulter les fichiers de protocole et de câblage pour les détails de diagnostic.</p>
 
+<h3>Binding parasite sur CC 102</h3>
+<p>Le TooB Tuner porte un binding <code>__bypass</code> sur le CC 102, en doublon avec <code>snapshot1</code>. Un seul appui déclenche les deux. À supprimer dans PiPedal.</p>
+
+<h3>Cache du démon</h3>
+<p>Il n'émet que sur changement. Après un redémarrage du Pico, sans les mécanismes de la section 7, le pédalier reste aveugle.</p>
+
+<h3>DTR</h3>
+<p><code>usb_cdc.data.read()</code> ne renvoie rien tant que l'hôte n'a pas asserté DTR. <code>pyserial</code> le fait à l'ouverture, un <code>printf</code> shell non. Un test par redirection peut donc échouer alors que le port est bon.</p>
+
+<h3>Temps de réponse du LCD</h3>
+<p>150 à 250 ms par pixel. Toute animation en mouvement continu est floue. Les apparitions fixes et les barres qui ne font qu'ajouter des pixels restent nettes.</p>
+
+<h3>Redémarrage USB du Pico</h3>
+<p>Chaque sauvegarde de <code>code.py</code> fait disparaître puis réapparaître le port série. Le démon doit encaisser — ce qu'il fait.</p>
+
+<h3>Ordre des broches</h3>
+<p>Une inversion entre <code>BROCHES_LEDS</code> et <code>BRILLANCE</code> reste invisible tant que toutes les LED sont de la même couleur, et devient pénible à diagnostiquer ensuite.</p>
+
+<h3>Session SSH</h3>
+<p>Un démon lancé au premier plan meurt avec la session. <code>tmux</code> pour le debug, systemd pour de bon.</p>
+
+<!-- ===================================================== -->
 <h2 id="miseenroute"><span class="num">Section 11</span>Mise en route</h2>
-<p>Installer les dépendances, copier les fichiers CircuitPython, installer le démon puis vérifier <code>/dev/pipedal-pico</code>.</p>
+<p>Chaque étape valide la précédente.</p>
 
+<ol class="steps">
+<li><code>adafruit_character_lcd/</code> copié dans <code>/lib</code> du CIRCUITPY.</li>
+<li><code>boot.py</code> en place, hard reset. <code>ls /dev/ttyACM*</code> doit montrer deux ports.</li>
+<li>Règle udev posée. <code>ls -l /dev/pipedal-pico</code> doit pointer sur l'un des deux.</li>
+<li>Potentiomètre réglé : des rectangles noirs au démarrage prouvent que le LCD est vivant. Tourner jusqu'à ce qu'ils s'estompent.</li>
+<li><code>printf 'S3\n' &gt; /dev/pipedal-pico</code> — la LED 3 s'allume. Toute la chaîne USB est validée sans une ligne de websocket.</li>
+<li><code>printf 'N:Test\nS2\nM:Chorus\n' &gt; /dev/pipedal-pico</code> — l'écran affiche.</li>
+<li><code>python3 pipedal_bridge.py -v</code> — la barre se remplit, l'écran passe en mode normal.</li>
+<li>Changement de snapshot depuis l'interface — la LED et l'écran suivent.</li>
+<li>Appui sur F3 — mode accordeur, et <code>Accordeur : abonnement sur instance 16</code> dans les logs.</li>
+</ol>
+
+<!-- ===================================================== -->
 <h2 id="reste"><span class="num">Section 12</span>Reste à faire</h2>
-<p>Les évolutions restantes sont suivies dans le dépôt.</p>
 
-<footer>Crade Cortex · documentation matérielle et logicielle</footer>
+<ul class="todo">
+<li>Supprimer le binding <code>__bypass</code> sur CC 102</li>
+<li>Câbler les switches et LED restants</li>
+<li>Assigner F4</li>
+<li>Accordeur en barre-graphe sur les 8 LED, en complément de l'écran</li>
+<li>Module I2C pour le LCD — 4 fils au lieu de 8 — ou OLED 256×64 SSD1322 pour la lisibilité sur scène</li>
+<li>LED RGB WS2812 sous les snapshots : la couleur est déjà dans <code>snapshots[i].color</code></li>
+<li>Boîtier : réduire X sous 220 mm, paroi arrière à 3 mm minimum, compenser les perçages de 0,2 à 0,3 mm pour la buse de 0,6 mm</li>
+</ul>
+
+<footer>
+pico/ &nbsp; boot.py · code.py · ecran.py · retour_pipedal.py · lib/adafruit_character_lcd<br>
+pi/ &nbsp;&nbsp;&nbsp; pipedal_bridge.py
+</footer>
+
 </main>
 </div>
+
+<script>
+(function(){
+  var liens = [].slice.call(document.querySelectorAll('nav a'));
+  var cibles = liens.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  if(!('IntersectionObserver' in window)) return;
+  var obs = new IntersectionObserver(function(entrees){
+    entrees.forEach(function(e){
+      if(!e.isIntersecting) return;
+      var i = cibles.indexOf(e.target);
+      liens.forEach(function(a,j){ a.classList.toggle('on', j===i); });
+    });
+  }, {rootMargin:'0px 0px -72% 0px'});
+  cibles.forEach(function(c){ if(c) obs.observe(c); });
+})();
+</script>
 </body>
 </html>
