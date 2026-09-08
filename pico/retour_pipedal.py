@@ -101,6 +101,7 @@ def lien_actif():
 #
 # Pi -> Pico
 #   S<n>              snapshot actif, base 1
+#   S-                aucun snapshot dans ce pedalboard
 #   HB                battement de coeur
 #   N:<texte>         nom du pedalboard      -> ecran ligne 1
 #   M:<texte>         nom du snapshot actif  -> ecran ligne 2
@@ -130,16 +131,34 @@ def _traiter(ligne):
         return
 
     if ligne[0] == "S":
+        corps = ligne[1:]
+
+        # Aucun snapshot dans ce pedalboard : on eteint le groupe plutot
+        # que de laisser une LED mentir.
+        if corps == "-":
+            _snapshot_actif = None
+            _attente = None
+            _afficher(None)
+            if _ecran is not None:
+                _ecran.snapshot(None)
+            return
+
         try:
-            n = int(ligne[1:]) - 1        # protocole en base 1
+            n = int(corps) - 1            # protocole en base 1
         except ValueError:
             return
-        if 0 <= n < _nb_snapshots:
-            _snapshot_actif = n
-            _attente = None
-            _afficher(n)
-            if _ecran is not None:
-                _ecran.snapshot(n)
+        if n < 0:
+            return
+
+        _snapshot_actif = n
+        _attente = None
+
+        # PiPedal gere six snapshots, le pedalier n'a que quatre LED.
+        # Au-dela, on eteint le groupe mais l'ecran affiche le numero :
+        # ignorer la trame laisserait l'ancien etat affiche a tort.
+        _afficher(n if n < _nb_snapshots else None)
+        if _ecran is not None:
+            _ecran.snapshot(n)
         return
 
     tete = ligne[:2]

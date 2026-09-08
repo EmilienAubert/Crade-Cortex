@@ -33,6 +33,7 @@
 #
 # Protocole serie emis vers le Pico :
 #   S<n>        snapshot actif, base 1
+#   S-          aucun snapshot selectionne dans ce pedalboard
 #   HB          battement de coeur, 1 Hz
 #   N:<texte>   nom du pedalboard      -> LCD ligne 1
 #   M:<texte>   nom du snapshot actif  -> LCD ligne 2
@@ -89,6 +90,9 @@ PAS_CENTS = 2                # quantification, evite de saturer le LCD
 NOTES = ("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
 
 log = logging.getLogger("bridge")
+
+# Sentinelle : distingue "pas encore recu" de "aucun snapshot actif".
+INCONNU = object()
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +192,9 @@ class Etat:
 
     def __init__(self, lien):
         self.lien = lien
-        self.snapshot = None           # base 1, tel qu'envoye au Pico
+        # None      : aucun snapshot selectionne cote PiPedal
+        # INCONNU   : on n'a pas encore recu l'information
+        self.snapshot = INCONNU        # index base 0, ou None
         self.nom_pedalboard = None
         self.nom_snapshot = None
         self.instance = None       # instanceId du TooB Tuner
@@ -200,13 +206,28 @@ class Etat:
         self._dernier_envoi = 0.0
 
     def maj_snapshot(self, index_base0, forcer=False):
+        """index_base0 : index PiPedal, base 0.
+
+        PiPedal renvoie -1 quand le pedalboard n'a aucun snapshot
+        selectionne. Sans traitement dedie, le +1 donnerait S0, que le
+        Pico rejetterait en silence en gardant l'ancien affichage."""
         if index_base0 is None:
+            return                       # information absente : on ne touche a rien
+
+        index = int(index_base0)
+        if index < 0:
+            index = None                 # aucun snapshot actif
+
+        if not forcer and index == self.snapshot:
             return
-        index = int(index_base0) + 1
-        if forcer or index != self.snapshot:
-            self.snapshot = index
-            self.lien.envoyer("S%d" % index)
-            log.info("snapshot -> %d", index)
+        self.snapshot = index
+
+        if index is None:
+            self.lien.envoyer("S-")
+            log.info("snapshot -> aucun")
+        else:
+            self.lien.envoyer("S%d" % (index + 1))
+            log.info("snapshot -> %d", index + 1)
 
     def maj_nom(self, nom, forcer=False):
         if not nom:
@@ -290,8 +311,9 @@ class Etat:
 
     def repousser(self):
         """Reemet l'etat connu, apres reconnexion."""
-        if self.snapshot is not None:
-            self.maj_snapshot(self.snapshot - 1, forcer=True)
+        if self.snapshot is not INCONNU:
+            self.maj_snapshot(-1 if self.snapshot is None else self.snapshot,
+                              forcer=True)
         if self.nom_pedalboard is not None:
             self.maj_nom(self.nom_pedalboard, forcer=True)
         if self.nom_snapshot is not None:
