@@ -1,6 +1,6 @@
 # PiPedal websocket protocol
 
-**English** · [Français](PROTOCOLE.md)
+**English** · [Français](../fr/PROTOCOLE.md)
 
 Captured from **PiPedal 2.0.110**, on the browser side.
 
