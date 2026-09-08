@@ -1,6 +1,6 @@
 # Crade Cortex — schéma de câblage
 
-[English](..\en\WIRING.md) · **Français**
+[English](../en/WIRING.md) · **Français**
 
 Établi d'après `code.py`. Toute modification d'affectation dans le code doit
 être reportée ici, et inversement.
