@@ -1,6 +1,6 @@
 # Crade Cortex — wiring
 
-**English** · [Français](CABLAGE.md)
+**English** · [Français](../fr/CABLAGE.md)
 
 Derived from `code.py`. Any change to the pin assignment in the code must be
 reflected here, and the other way round.
