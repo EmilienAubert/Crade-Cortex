@@ -58,6 +58,7 @@ import asyncio
 import json
 import logging
 import time
+import unicodedata
 
 import serial
 import websockets
@@ -93,6 +94,19 @@ log = logging.getLogger("bridge")
 
 # Sentinelle : distingue "pas encore recu" de "aucun snapshot actif".
 INCONNU = object()
+
+
+def ascii_propre(texte):
+    """Convertit un texte Unicode en ASCII sur pour le protocole serie.
+
+    PiPedal accepte les noms Unicode, alors que le protocole du Pico est
+    volontairement ASCII. Les accents sont translitteres (ex. "separe" pour
+    "séparé") et les caracteres sans equivalent ASCII sont ignores.
+    """
+    if texte is None:
+        return ""
+    texte = unicodedata.normalize("NFKD", str(texte))
+    return texte.encode("ascii", "ignore").decode("ascii")
 
 
 # ---------------------------------------------------------------------------
@@ -173,13 +187,14 @@ class LienPico:
         return lignes
 
     def envoyer(self, trame):
-        """Envoie une trame texte, saut de ligne ajoute. Ne leve jamais."""
+        """Envoie une trame texte ASCII, saut de ligne ajoute. Ne leve jamais."""
         if not self._ouvrir():
             return False
         try:
+            trame = ascii_propre(trame)
             self.ser.write((trame + "\n").encode("ascii"))
             return True
-        except (serial.SerialException, OSError):
+        except (UnicodeError, serial.SerialException, OSError):
             self._fermer()
             return False
 
