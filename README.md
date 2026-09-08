@@ -12,7 +12,7 @@ exists — PiPedal's — and the whole class of desynchronisation bugs disappear
 construction.
 
 This repository also contains
-[documentation of PiPedal's undocumented internal websocket protocol](docs/PROTOCOL.md),
+[documentation of PiPedal's undocumented internal websocket protocol](docs/en/PROTOCOL.md),
 reverse-engineered from version 2.0.110. That is probably the most reusable part
 of it for other projects.
 
@@ -52,7 +52,7 @@ via ALSA. The daemon only handles the return path.
 | Switches | 8 SPST momentary footswitches |
 | LEDs | 8, PWM at 2 kHz, one resistor each |
 
-Full wiring, pinout and assembly order: **[docs/WIRING.md](docs/WIRING.md)**
+Full wiring, pinout and assembly order: **[docs/en/WIRING.md](docs/en/WIRING.md)**
 
 ---
 
@@ -159,9 +159,9 @@ lets one press both mute the signal and bring up the tuner.
 
 | Document | Contents |
 |---|---|
-| [docs/PROTOCOL.md](docs/PROTOCOL.md) | **PiPedal's websocket protocol**, reverse-engineered |
-| [docs/WIRING.md](docs/WIRING.md) | Pinout, wiring, assembly order, checks |
-| [docs/index.html](docs/index.html) | Full documentation, laid out |
+| [docs/en/PROTOCOL.md](docs/en/PROTOCOL.md) | **PiPedal's websocket protocol**, reverse-engineered |
+| [docs/en/WIRING.md](docs/en/WIRING.md) | Pinout, wiring, assembly order, checks |
+| [docs/en/index.html](docs/en/index.html) | Full documentation, laid out |
 
 ---
 
