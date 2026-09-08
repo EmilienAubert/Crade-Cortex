@@ -14,7 +14,7 @@ disparaît par construction.
 > **English summary.** A DIY MIDI footswitch controller for PiPedal, with
 > closed-loop state feedback over the same USB cable that carries MIDI. Includes
 > [documentation of PiPedal's undocumented internal websocket
-> protocol](docs/PROTOCOLE.md), reverse-engineered from version 2.0.110 — likely
+> protocol](docs/fr/PROTOCOLE.md), reverse-engineered from version 2.0.110 — likely
 > the most reusable part of this repository for other projects.
 
 ---
@@ -53,7 +53,7 @@ via ALSA. Le démon ne s'occupe que du retour.
 | Switches | 8 footswitches SPST momentanés |
 | LED | 8, PWM 2 kHz, une résistance chacune |
 
-Câblage complet, brochage et ordre de montage : **[docs/CABLAGE.md](docs/CABLAGE.md)**
+Câblage complet, brochage et ordre de montage : **[docs/fr/CABLAGE.md](docs/fr/CABLAGE.md)**
 
 ---
 
@@ -160,9 +160,9 @@ permet de couper le son et d'afficher l'accordeur d'un seul geste.
 
 | Document | Contenu |
 |---|---|
-| [docs/PROTOCOLE.md](docs/PROTOCOLE.md) | **Le protocole websocket de PiPedal**, reverse-engineeré |
-| [docs/CABLAGE.md](docs/CABLAGE.md) | Brochage, câblage, ordre de montage, vérifications |
-| [docs/index.fr.html](docs/index.fr.html) | Documentation complète, mise en page |
+| [docs/fr/PROTOCOLE.md](docs/fr/PROTOCOLE.md) | **Le protocole websocket de PiPedal**, reverse-engineeré |
+| [docs/fr/CABLAGE.md](docs/fr/CABLAGE.md) | Brochage, câblage, ordre de montage, vérifications |
+| [docs/fr/index.fr.html](docs/fr/index.fr.html) | Documentation complète, mise en page |
 
 ---
 
